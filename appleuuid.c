@@ -50,30 +50,40 @@ int main(int argc, const char *argv[])
     uint8_t hash[20] = {};
     SHA1_CTX context;
     const char *uuidstr;
-    int little = 0;
+    int swapin = 0, swapout = 0;
+    int i;
 
-    if (argc != 2 && argc != 3) {
+    if (argc < 2) {
         fprintf(stderr,
-            "Syntax: %s [-l] <uuid>\n\n"
-            "   -l      Interpret first 3 UUID fields as little-endian.\n",
+            "Syntax: %s [-b] [-B] <uuid>\n\n"
+            "   -b      Byte-swap first 3 UUID input fields.\n",
+            "   -B      Byte-swap first 3 UUID output fields.\n",
             argv[0]);
         return 1;
     }
 
-    if (argc == 3 && strcmp(argv[1], "-l")) {
-        fprintf(stderr, "Invalid option.\n");
+    for (i = 1; i < argc; ++i) {
+        if (!strcmp(argv[i], "-b")) {
+            swapin = 1;
+        } else if (!strcmp(argv[i], "-B")) {
+            swapout = 1;
+        } else {
+            uuidstr = argv[i];
+        }
+    }
+
+    if (!uuidstr) {
+        fprintf(stderr, "No GUID specified.\n");
         return 1;
     }
 
-    uuidstr = argc == 3 ? argv[2] : argv[1];
-    little = argc == 3;
 
     if (!parse(uuidstr, uuid)) {
         fprintf(stderr, "Invalid UUID syntax.\n");
         return 1;
     }
 
-    if (little) {
+    if (swapin) {
         reverse(uuid, 4);
         reverse(uuid+4, 2);
         reverse(uuid+6, 2);
@@ -87,6 +97,12 @@ int main(int argc, const char *argv[])
     hash[6] |= 0x50;
     hash[8] &= 0x3F;
     hash[8] |= 0x80;
+
+    if (swapin) {
+        reverse(hash, 4);
+        reverse(hash+4, 2);
+        reverse(hash+6, 2);
+    }
 
     printf(
         "%02X%02X%02X%02X-"
